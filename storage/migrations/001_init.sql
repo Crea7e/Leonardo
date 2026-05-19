@@ -7,9 +7,12 @@ CREATE TABLE IF NOT EXISTS trends (
     keyword     VARCHAR(255) NOT NULL,
     score       FLOAT,
     captured_at TIMESTAMPTZ  DEFAULT NOW(),
-    is_processed BOOLEAN     DEFAULT FALSE,
-    UNIQUE(source, keyword, captured_at::date)
+    is_processed BOOLEAN     DEFAULT FALSE
 );
+
+-- expression-based unique — must be an index, not table constraint
+CREATE UNIQUE INDEX IF NOT EXISTS idx_trends_unique
+    ON trends (source, keyword, (captured_at::date));
 
 CREATE INDEX idx_trends_unprocessed ON trends(is_processed) WHERE is_processed = FALSE;
 

@@ -1,7 +1,7 @@
 # Raphael — Architecture (read-only source of truth)
 
 ## Цель
-Автономная система авторасскрутки фотостоков:
+Автономная система автораскрутки фотостоков:
 - парсинг трендов из Shutterstock / Adobe Stock / Freepik
 - генерация фото через ComfyUI SDXL
 - автоматическая загрузка с title, keywords, hashtags
@@ -66,7 +66,7 @@
   - WS соединение к `ws://localhost:8188/ws?client_id=...`
   - polling `GET /history/{prompt_id}` до завершения
   - скачивает PNG в `~/projects/Raphael/output/`
-  - обязательно под `vram_guard.acquire("comfyui")`
+  - обязательно внутри блока `vram_guard.acquire("comfyui")`
 
 ### metadata/
 - `tagger.py`
@@ -74,7 +74,7 @@
   - Ollama `/api/chat` с `gemma4:e2b`
   - возвращает `ImageMeta(title: str, keywords: list[str], category: str)`
   - ≤50 keywords (лимит Shutterstock)
-  - обязательно под `vram_guard.acquire("gemma")`
+  - обязательно внутри блока `vram_guard.acquire("gemma")`
 
 - `hashtags.py`
   - `def build_hashtags(trend: Trend, keywords: list[str]) → list[str]`
@@ -93,7 +93,7 @@
   - Chunked multipart upload
 
 ### scheduler/pipeline.py
-ARQ (Redis-based) воркер:
+Воркер ARQ (на базе Redis):
 
 ```python
 async def parse_trends(ctx):     # каждые 6 часов
@@ -101,7 +101,7 @@ async def process_job(ctx, job_id):  # для каждого тренда
 async def check_review_status(ctx):  # каждые 24 часа
 ```
 
-`WorkerSettings` с очередями: `trends`, `generation`, `upload`
+`WorkerSettings` с функциями: `parse_trends`, `process_job`, `enqueue_pending`
 
 ### storage/
 - `models.py` — SQLModel модели:
@@ -113,10 +113,13 @@ async def check_review_status(ctx):  # каждые 24 часа
 
 - `repository.py` — только async функции через asyncpg:
   ```python
-  async def save_trends(trends: list[Trend]) -> None
-  async def get_pending_jobs() -> list[Job]
-  async def update_job_status(job_id: int, status: str) -> None
-  async def save_upload_result(result: UploadResult) -> None
+  async def save_trends(conn, trends: list[Trend]) -> int
+  async def get_trend_by_id(conn, trend_id: int) -> Record | None
+  async def get_unprocessed_trends(conn, limit: int) -> list[Record]
+  async def create_job(conn, trend_id: int) -> int
+  async def update_job(conn, job_id: int, **fields) -> None
+  async def save_upload_result(conn, result: UploadResult) -> None
+  async def mark_trend_processed(conn, trend_id: int) -> None
   ```
 
 ### infra/

@@ -5,19 +5,20 @@ from pathlib import Path
 
 import httpx
 import websockets
-from infra.logger import log
 
 from infra import vram_guard
 from infra.config import settings
+from infra.logger import log
 
 
 async def generate(workflow: dict) -> Path:
     """Send workflow to ComfyUI, wait for completion, return Path to PNG."""
-    async with vram_guard.acquire("comfyui"):
-        client_id = str(uuid.uuid4())
-        ws_url = f"{settings.comfyui_url}/ws?client_id={client_id}"
-        http_base = settings.comfyui_url.replace("ws://", "http://").replace("wss://", "https://")
+    client_id = str(uuid.uuid4())
+    http_base = settings.comfyui_url.replace("ws://", "http://").replace("wss://", "https://")
+    ws_url = f"{settings.comfyui_url}/ws?client_id={client_id}"
 
+    # Hold VRAM lock only during active GPU inference, not during HTTP download
+    async with vram_guard.acquire("comfyui"):
         async with websockets.connect(ws_url) as ws:
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
@@ -28,9 +29,9 @@ async def generate(workflow: dict) -> Path:
                 prompt_id = resp.json()["prompt_id"]
 
             log.info("comfyui.generating", prompt_id=prompt_id)
-            prompt_id = await _wait_for_completion(ws, prompt_id)
+            await _wait_for_completion(ws, prompt_id)
 
-        return await _download_result(http_base, prompt_id)
+    return await _download_result(http_base, prompt_id)
 
 
 async def _wait_for_completion(ws, prompt_id: str) -> str:
@@ -47,7 +48,7 @@ async def _download_result(http_base: str, prompt_id: str) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     async with httpx.AsyncClient() as client:
-        for _ in range(30):
+        for _ in range(60):
             resp = await client.get(f"{http_base}/history/{prompt_id}")
             resp.raise_for_status()
             history = resp.json()

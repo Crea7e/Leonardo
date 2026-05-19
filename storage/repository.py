@@ -7,7 +7,7 @@ from storage.models import UploadResult
 async def save_trends(conn: asyncpg.Connection, trends: list[ParsedTrend]) -> int:
     """Insert trends, skip duplicates (source+keyword+date). Returns inserted count."""
     rows = [(t.source, t.keyword, t.score, t.captured_at) for t in trends]
-    result = await conn.executemany(
+    await conn.executemany(
         """
         INSERT INTO trends (source, keyword, score, captured_at)
         VALUES ($1, $2, $3, $4)
@@ -15,7 +15,11 @@ async def save_trends(conn: asyncpg.Connection, trends: list[ParsedTrend]) -> in
         """,
         rows,
     )
-    return int(result.split()[-1]) if result else 0
+    return len(rows)
+
+
+async def get_trend_by_id(conn: asyncpg.Connection, trend_id: int) -> asyncpg.Record | None:
+    return await conn.fetchrow("SELECT * FROM trends WHERE id = $1", trend_id)
 
 
 async def get_unprocessed_trends(conn: asyncpg.Connection, limit: int = 10) -> list[asyncpg.Record]:

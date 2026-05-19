@@ -9,19 +9,20 @@ One-shot:
 """
 
 import asyncio
-import json
 from pathlib import Path
 
 import asyncpg
-from arq import cron
-from parsers.shutterstock import ShutterstockParser
-from prompt_engine.builder import build_workflow
+from arq import create_pool, cron
+from arq.connections import RedisSettings
 
 from generation import comfyui_client
 from infra.config import settings
 from infra.logger import log
 from metadata.hashtags import build_hashtags
 from metadata.tagger import generate_metadata
+from parsers.base import Trend
+from parsers.shutterstock import ShutterstockParser
+from prompt_engine.builder import build_workflow
 from storage import repository
 
 
@@ -48,13 +49,13 @@ async def parse_trends(ctx: dict) -> None:
 async def process_job(ctx: dict, trend_id: int) -> None:
     """Full pipeline for one trend: generate → metadata → upload."""
     conn = await _get_conn()
-    job_id = await repository.create_job(conn, trend_id)
+    job_id: int | None = None
 
     try:
-        trend_row = await conn.fetchrow("SELECT * FROM trends WHERE id = $1", trend_id)
-
-
-        from parsers.base import Trend
+        job_id = await repository.create_job(conn, trend_id)
+        trend_row = await repository.get_trend_by_id(conn, trend_id)
+        if trend_row is None:
+            raise ValueError(f"Trend {trend_id} not found")
 
         trend = Trend(
             keyword=trend_row["keyword"],
@@ -65,7 +66,7 @@ async def process_job(ctx: dict, trend_id: int) -> None:
         await repository.update_job(conn, job_id, status="generating")
         workflow = build_workflow(trend)
         image_path: Path = await comfyui_client.generate(workflow)
-        await repository.update_job(conn, job_id, status="metadata", image_path=str(image_path))
+        await repository.update_job(conn, job_id, status="uploading", image_path=str(image_path))
 
         meta = await generate_metadata(trend, image_path)
         hashtags = build_hashtags(trend, meta.keywords)
@@ -75,8 +76,8 @@ async def process_job(ctx: dict, trend_id: int) -> None:
             job_id,
             status="uploading",
             title=meta.title,
-            keywords=json.dumps(meta.keywords),
-            hashtags=json.dumps(hashtags),
+            keywords=meta.keywords,
+            hashtags=hashtags,
             category=meta.category,
         )
 
@@ -90,7 +91,8 @@ async def process_job(ctx: dict, trend_id: int) -> None:
 
     except Exception as exc:
         log.exception("pipeline.failed", job_id=job_id, trend_id=trend_id)
-        await repository.update_job(conn, job_id, status="failed", error_msg=str(exc))
+        if job_id is not None:
+            await repository.update_job(conn, job_id, status="failed", error_msg=str(exc))
     finally:
         await conn.close()
 
@@ -113,7 +115,7 @@ class WorkerSettings:
         cron(parse_trends, hour={0, 6, 12, 18}),  # every 6 hours
         cron(enqueue_pending, minute={0, 15, 30, 45}),
     ]
-    redis_settings_from_dsn = settings.redis_url
+    redis_settings = RedisSettings.from_dsn(settings.redis_url)
     max_jobs = 3  # limit concurrency — VRAM guard handles serialization
 
 
@@ -125,5 +127,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.run_once:
-        asyncio.run(parse_trends({}))
-        asyncio.run(enqueue_pending({}))
+
+        async def _run_once() -> None:
+            await parse_trends({})
+            redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+            try:
+                await enqueue_pending({"redis": redis})
+            finally:
+                await redis.close()
+
+        asyncio.run(_run_once())

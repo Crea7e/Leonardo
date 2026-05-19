@@ -1,7 +1,7 @@
 # Raphael — Agent Instructions
 
 ## МИССИЯ
-Автономный пайплайн авторасскрутки фотостоков:
+Автономный пайплайн автораскрутки фотостоков:
 **тренды → ComfyUI генерация → метаданные → загрузка**
 
 ---
@@ -88,9 +88,9 @@ Raphael/
 
 ## ПРАВИЛА КОДА
 
-- Python 3.12, async-first для всего I/O
+- Python 3.12, async-first для всего ввода-вывода
 - Type hints обязательны на всех public функциях
-- Форматтер: `ruff format` (line-length 100), линтер: `ruff check`
+- Форматёр: `ruff format` (line-length 100), линтер: `ruff check`
 - Логгер: только `structlog`, никаких `print`
 - Секреты: только через `.env` + `pydantic-settings`, никогда в коде
 - HTTP клиент: `httpx.AsyncClient`, не `requests`
@@ -162,7 +162,7 @@ pytest tests/ -v
 
 ---
 
-## PIPELINE FLOW (шаг за шагом)
+## ПОСЛЕДОВАТЕЛЬНОСТЬ РАБОТЫ (шаг за шагом)
 
 1. `parsers/*.py` — каждые 6 часов парсят топ-тренды → `storage.repository.save_trends()`
 2. `scheduler/pipeline.py` — берёт новые тренды из БД, создаёт `Job` со статусом `pending`
@@ -183,7 +183,7 @@ pytest tests/ -v
 - **НЕ** писать SQL напрямую в слоях выше `storage/`
 - **НЕ** добавлять фичи вне ARCHITECTURE.md без обновления этого файла
 - **НЕ** публиковать контент без проверки `review_status == approved`
-- **НЕ** трогать `~/projects/jarvis/` — отдельный проект
+- **НЕ** трогать `~/projects/jarvis/` — это отдельный проект
 
 ---
 

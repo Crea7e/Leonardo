@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
 
     comfyui_url: str = "ws://localhost:8188"
-    comfyui_output_dir: Path = Path("output")
+    comfyui_output_dir: Path = Path(__file__).resolve().parent.parent / "output"
 
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "gemma4:e2b"

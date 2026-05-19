@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 
 from parsers.base import Trend
@@ -47,7 +48,7 @@ def _fallback_workflow(trend: Trend, style: str) -> dict:
         "3": {
             "class_type": "KSampler",
             "inputs": {
-                "seed": 0,
+                "seed": random.randint(0, 2**32 - 1),
                 "steps": 30,
                 "cfg": 7.0,
                 "sampler_name": "dpmpp_2m",

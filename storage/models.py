@@ -1,6 +1,8 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
-from sqlmodel import Field, SQLModel
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlmodel import Column, Field, SQLModel
 
 
 class Trend(SQLModel, table=True):
@@ -10,7 +12,7 @@ class Trend(SQLModel, table=True):
     source: str
     keyword: str
     score: float = 1.0
-    captured_at: datetime = Field(default_factory=datetime.utcnow)
+    captured_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_processed: bool = False
 
 
@@ -23,12 +25,12 @@ class Job(SQLModel, table=True):
     workflow_json: str | None = None  # JSON string
     image_path: str | None = None
     title: str | None = None
-    keywords: str | None = None  # JSON array string
-    hashtags: str | None = None  # JSON array string
+    keywords: list[str] | None = Field(default=None, sa_column=Column(ARRAY(String)))
+    hashtags: list[str] | None = Field(default=None, sa_column=Column(ARRAY(String)))
     category: str | None = None
     error_msg: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     uploaded_at: datetime | None = None
 
 

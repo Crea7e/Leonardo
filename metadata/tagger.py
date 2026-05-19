@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,16 +9,18 @@ from infra.config import settings
 from infra.logger import log
 from parsers.base import Trend
 
-SYSTEM_PROMPT = """You are a professional photo stock metadata expert.
-Given a trend keyword, generate metadata for a stock photo.
-Respond ONLY with valid JSON, no markdown.
-
-Format:
-{
-  "title": "...",         // max 200 chars, descriptive
-  "keywords": ["..."],    // exactly 50 relevant keywords, single words or short phrases
-  "category": "..."       // one of: Nature, Business, Technology, People, Travel, Food, Architecture
-}"""
+SYSTEM_PROMPT = (
+    "You are a professional photo stock metadata expert.\n"
+    "Given a trend keyword, generate metadata for a stock photo.\n"
+    "Respond ONLY with valid JSON, no markdown.\n\n"
+    "Format:\n"
+    "{\n"
+    '  "title": "...",         // max 200 chars, descriptive\n'
+    '  "keywords": ["..."],    // exactly 50 relevant keywords, single words or short phrases\n'
+    '  "category": "..."       // one of: Nature, Business, Technology, People,\n'
+    "                            // Travel, Food, Architecture\n"
+    "}"
+)
 
 
 @dataclass
@@ -48,8 +51,6 @@ async def generate_metadata(trend: Trend, image_path: Path) -> ImageMeta:
             resp.raise_for_status()
 
     data = resp.json()["message"]["content"]
-    import json
-
     parsed = json.loads(data)
     keywords = parsed.get("keywords", [])[:50]
     meta = ImageMeta(

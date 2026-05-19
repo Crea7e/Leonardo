@@ -15,14 +15,12 @@ import asyncpg
 from arq import create_pool, cron
 from arq.connections import RedisSettings
 
-from generation import comfyui_client
 from infra.config import settings
 from infra.logger import log
 from metadata.hashtags import build_hashtags
 from metadata.tagger import generate_metadata
 from parsers.base import Trend
 from parsers.shutterstock import ShutterstockParser
-from prompt_engine.builder import build_workflow
 from storage import repository
 
 
@@ -64,8 +62,10 @@ async def process_job(ctx: dict, trend_id: int) -> None:
         )
 
         await repository.update_job(conn, job_id, status="generating")
-        workflow = build_workflow(trend)
-        image_path: Path = await comfyui_client.generate(workflow)
+        prompt = build_prompt(trend)
+        image_path: Path = await imagen_client.generate(
+            prompt, aspect_ratio=settings.imagen_aspect_ratio
+        )
         await repository.update_job(conn, job_id, status="uploading", image_path=str(image_path))
 
         meta = await generate_metadata(trend, image_path)

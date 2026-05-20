@@ -1,13 +1,12 @@
 """
-Google AI Studio — Imagen image generation.
+Google AI Studio — Gemini image generation.
 
-Default model: imagen-3.0-fast-generate-001  (Imagen 3 Fast, "нано банана 2")
-Newer equiv:   imagen-4.0-fast-generate-001  (Imagen 4 Fast)
+Default model: gemini-2.5-flash-image  (бесплатный тир)
+Paid alt:      imagen-4.0-fast-generate-001 ($0.02/image, нужен billing)
 Override via:  IMAGEN_MODEL= in .env
 
-Docs:       https://ai.google.dev/api/generate-images
-Free tier:  ~500-1000 images/day, 15 RPM
-Paid:       $0.02/image (Fast), $0.04/image (Standard)
+Docs:       https://ai.google.dev/gemini-api/docs/image-generation
+Free tier:  15 RPM — при 429 подождать 60 сек
 Quota page: https://aistudio.google.com/rate-limit
 """
 
@@ -22,47 +21,34 @@ from infra.logger import log
 
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
-ASPECT_RATIOS = {
-    "square": "1:1",  # 1024×1024 — стандарт стоков
-    "landscape": "4:3",  # 1024×768
-    "portrait": "3:4",  # 768×1024
-    "wide": "16:9",
-}
-
 
 async def generate(prompt: str, aspect_ratio: str = "square") -> Path:
-    """Generate image via Imagen, return Path to saved PNG."""
+    """Generate image via Gemini image model, return Path to saved PNG."""
     output_dir = settings.imagen_output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     model = settings.imagen_model
-    ratio = ASPECT_RATIOS.get(aspect_ratio, ASPECT_RATIOS[settings.imagen_aspect_ratio])
+    url = f"{_BASE_URL}/{model}:generateContent?key={settings.google_api_key}"
+
     payload = {
-        "instances": [{"prompt": prompt}],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": ratio,
-            "safetyFilterLevel": "block_some",
-            "personGeneration": "allow_all",
-        },
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseModalities": ["IMAGE"]},
     }
 
-    url = f"{_BASE_URL}/{model}:predict?key={settings.google_api_key}"
-
-    async with httpx.AsyncClient(timeout=60) as client:
-        log.info("imagen.generating", model=model, ratio=ratio, prompt=prompt[:60])
+    async with httpx.AsyncClient(timeout=120) as client:
+        log.info("imagen.generating", model=model, prompt=prompt[:60])
         resp = await client.post(url, json=payload)
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            raise RuntimeError(f"Imagen API {resp.status_code}: {resp.text}")
 
     data = resp.json()
-    predictions = data.get("predictions", [])
-    if not predictions:
-        raise RuntimeError(f"Imagen returned no predictions: {data}")
+    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    for part in parts:
+        if "inlineData" in part:
+            image_bytes = base64.b64decode(part["inlineData"]["data"])
+            dest = output_dir / f"raphael_{uuid.uuid4().hex[:8]}.png"
+            dest.write_bytes(image_bytes)
+            log.info("imagen.saved", path=str(dest), size_kb=len(image_bytes) // 1024)
+            return dest
 
-    b64 = predictions[0]["bytesBase64Encoded"]
-    image_bytes = base64.b64decode(b64)
-
-    dest = output_dir / f"raphael_{uuid.uuid4().hex[:8]}.png"
-    dest.write_bytes(image_bytes)
-    log.info("imagen.saved", path=str(dest), size_kb=len(image_bytes) // 1024)
-    return dest
+    raise RuntimeError(f"No image in response: {data}")

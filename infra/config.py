@@ -9,15 +9,14 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://creator@localhost:5432/raphael"
     redis_url: str = "redis://localhost:6379"
 
-    # Google AI Studio
-    google_api_key: str = ""
-    imagen_model: str = "imagen-4.0-fast-generate-001"
+    # Hugging Face Inference API
+    hf_token: str = ""  # https://huggingface.co/settings/tokens
     imagen_output_dir: Path = Path(__file__).resolve().parent.parent / "output"
-    imagen_aspect_ratio: str = "square"  # square|landscape|portrait|wide
 
-    # Google Flow (Veo — video generation)
-    google_flow_model: str = "veo-2.0-generate-001"
-    flow_output_dir: Path = Path(__file__).resolve().parent.parent / "output_video"
+    # Google AI Studio (платная альтернатива, $0.02/фото)
+    google_api_key: str = ""
+    imagen_model: str = "gemini-2.5-flash-image"
+    imagen_aspect_ratio: str = "square"
 
     # Ollama (Gemma — metadata generation, runs locally)
     ollama_url: str = "http://localhost:11434"

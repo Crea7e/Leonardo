@@ -46,7 +46,7 @@ async def generate(prompt: str, aspect_ratio: str = "square") -> Path:
     for part in parts:
         if "inlineData" in part:
             image_bytes = base64.b64decode(part["inlineData"]["data"])
-            dest = output_dir / f"raphael_{uuid.uuid4().hex[:8]}.png"
+            dest = output_dir / f"leonardo_{uuid.uuid4().hex[:8]}.png"
             dest.write_bytes(image_bytes)
             log.info("imagen.saved", path=str(dest), size_kb=len(image_bytes) // 1024)
             return dest

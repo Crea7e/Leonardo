@@ -1,4 +1,4 @@
-# AGENTS.md — Raphael (фотостоки)
+# AGENTS.md — Leonardo (фотостоки)
 
 Этот файл читают все AI-агенты (Claude Code, aider, Cline, Roo) перед правкой кода в этом репо.
 Глобальные правила — в [`~/projects/AGENTS.md`](../AGENTS.md).
@@ -7,7 +7,7 @@
 
 ## TL;DR проекта
 
-Raphael = автономная монетизация фотостоков.
+Leonardo = автономная монетизация фотостоков.
 Цикл: парсинг трендов → генерация фото через ComfyUI SDXL → метаданные через Gemma → загрузка на Shutterstock / Adobe Stock.
 
 ```
@@ -28,10 +28,10 @@ Raphael = автономная монетизация фотостоков.
 | Splinter | стратегия, тренды |
 | Donatello | видео-контент |
 | Leonardo | публикация в соцсети |
-| **Raphael** | **монетизация фотостоков** ← здесь |
+| **Leonardo** | **монетизация фотостоков** ← здесь |
 | Michelangelo | личный Brain Twin (отдельный) |
 
-Raphael независим от остальных черепашек — отдельный поток дохода.
+Leonardo независим от остальных черепашек — отдельный поток дохода.
 
 ---
 
@@ -47,7 +47,7 @@ Raphael независим от остальных черепашек — отд
 ## Структура пакета
 
 ```
-Raphael/
+Leonardo/
 ├── parsers/              ← TrendParser ABC + Shutterstock/Adobe/Freepik
 ├── prompt_engine/        ← тренд → ComfyUI workflow JSON + шаблоны
 ├── generation/           ← WebSocket клиент ComfyUI
@@ -63,7 +63,7 @@ Raphael/
 
 ## Конвенции кода
 
-- Python 3.12, async-first, conda env `jarvis` (или отдельный `raphael`)
+- Python 3.12, async-first, conda env `jarvis` (или отдельный `leonardo`)
 - Type hints на всех public функциях
 - `ruff format` (line-length 100), `ruff check`
 - Только `structlog`, никаких `print`
@@ -298,10 +298,10 @@ comfyui_retry = retry(
 
 ```bash
 # Создать БД
-createdb -U creator raphael && psql -U creator raphael < storage/migrations/001_init.sql
+createdb -U creator leonardo && psql -U creator leonardo < storage/migrations/001_init.sql
 
 # Разовый прогон
-cd ~/projects/Raphael && source .venv/bin/activate
+cd ~/projects/Leonardo && source .venv/bin/activate
 python -m scheduler.pipeline --run-once
 
 # ARQ воркер

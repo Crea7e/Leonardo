@@ -27,7 +27,10 @@ from storage import repository
 
 
 async def _get_conn() -> asyncpg.Connection:
-    return await asyncpg.connect(settings.database_url)
+    return await asyncpg.connect(
+        settings.database_url,
+        server_settings={"search_path": settings.db_schema},
+    )
 
 
 async def parse_trends(ctx: dict) -> None:
@@ -81,9 +84,11 @@ async def process_job(ctx: dict, trend_id: int) -> None:
             category=meta.category,
         )
 
-        # TODO P1: iterate over enabled uploaders
-        # result = await ShutterstockUploader().upload(image_path, meta)
-        # await repository.save_upload_result(conn, result)
+        uploaders = [ShutterstockUploader()]
+        for uploader in uploaders:
+            result = await uploader.upload(job_id, image_path, meta)
+            await repository.save_upload_result(conn, result)
+            log.info("upload.done", stock=uploader.stock, external_id=result.external_id)
 
         await repository.update_job(conn, job_id, status="done")
         await repository.mark_trend_processed(conn, trend_id)

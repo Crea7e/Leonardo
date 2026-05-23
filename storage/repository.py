@@ -11,7 +11,7 @@ async def save_trends(conn: asyncpg.Connection, trends: list[ParsedTrend]) -> in
         """
         INSERT INTO trends (source, keyword, score, captured_at)
         VALUES ($1, $2, $3, $4)
-        ON CONFLICT (source, keyword, (captured_at::date)) DO NOTHING
+        ON CONFLICT (source, keyword, date_trunc('day', captured_at AT TIME ZONE 'UTC')) DO NOTHING
         """,
         rows,
     )

@@ -2,11 +2,18 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_SMARTOLOGY_ENV = str(Path(__file__).resolve().parent.parent.parent / "smartology" / ".env")
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=[_SMARTOLOGY_ENV, ".env"],  # smartology/.env первый, локальный .env переопределяет
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-    database_url: str = "postgresql://creator@localhost:5432/raphael"
+    database_url: str = "postgresql://creator@localhost:5432/smartology"
+    db_schema: str = "leonardo"
     redis_url: str = "redis://localhost:6379"
 
     # Hugging Face Inference API

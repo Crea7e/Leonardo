@@ -38,7 +38,7 @@ async def generate(prompt: str, aspect_ratio: str = "square") -> Path:
         return upscaled
     except Exception as e:
         log.warning("upscale.failed", reason=str(e), fallback="using original")
-        dest = output_dir / f"raphael_{uuid.uuid4().hex[:8]}.png"
+        dest = output_dir / f"leonardo_{uuid.uuid4().hex[:8]}.png"
         tmp.rename(dest)
         return dest
 
@@ -93,7 +93,7 @@ async def _upscale(image_bytes: bytes, output_dir: Path) -> Path:
         if resp.status_code != 200:
             raise RuntimeError(f"Upscale API {resp.status_code}: {resp.text[:300]}")
 
-    dest = output_dir / f"raphael_{uuid.uuid4().hex[:8]}_4x.png"
+    dest = output_dir / f"leonardo_{uuid.uuid4().hex[:8]}_4x.png"
     dest.write_bytes(resp.content)
     log.info("upscale.done", path=str(dest), size_kb=len(resp.content) // 1024)
     return dest

@@ -1,5 +1,5 @@
--- Raphael DB schema
--- Run: psql -U creator raphael < storage/migrations/001_init.sql
+-- Leonardo DB schema
+-- Run: psql -U creator leonardo < storage/migrations/001_init.sql
 
 CREATE TABLE IF NOT EXISTS trends (
     id          SERIAL PRIMARY KEY,
@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS trends (
     is_processed BOOLEAN     DEFAULT FALSE
 );
 
--- expression-based unique — must be an index, not table constraint
+-- TIMESTAMPTZ::date is timezone-dependent (not IMMUTABLE), use date_trunc at UTC
 CREATE UNIQUE INDEX IF NOT EXISTS idx_trends_unique
-    ON trends (source, keyword, (captured_at::date));
+    ON trends (source, keyword, date_trunc('day', captured_at AT TIME ZONE 'UTC'));
 
 CREATE INDEX idx_trends_unprocessed ON trends(is_processed) WHERE is_processed = FALSE;
 

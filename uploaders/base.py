@@ -9,6 +9,6 @@ class StockUploader(ABC):
     stock: str = ""
 
     @abstractmethod
-    async def upload(self, image_path: Path, meta: ImageMeta) -> UploadResult:
-        """Upload image with metadata. Returns UploadResult with external_id."""
+    async def upload(self, job_id: int, image_path: Path, meta: ImageMeta) -> UploadResult:
+        """Upload image with metadata. Returns UploadResult ready to persist."""
         ...
